@@ -382,17 +382,7 @@ contract Ownable is Context {
         require(_owner == _msgSender(), "Ownable: caller is not the owner");	
         _;	
     }	
-     /**	
-     * @dev Leaves the contract without owner. It will not be possible to call	
-     * `onlyOwner` functions anymore. Can only be called by the current owner.	
-     *	
-     * NOTE: Renouncing ownership will leave the contract without an owner,	
-     * thereby removing any functionality that is only available to the owner.	
-     */	
-    function renounceOwnership() external virtual onlyOwner {	
-        emit OwnershipTransferred(_owner, address(0));	
-        _owner = address(0);	
-    }	
+ 
     /**	
      * @dev Transfers ownership of the contract to a new account (`newOwner`).	
      * Can only be called by the current owner.	
@@ -425,7 +415,7 @@ contract Ownable is Context {
     }	
 }	
  
-interface IPancakeswapV2Factory {	
+interface IuniswapV2Factory {	
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);	
     function feeTo() external view returns (address);	
     function feeToSetter() external view returns (address);	
@@ -437,7 +427,7 @@ interface IPancakeswapV2Factory {
     function setFeeToSetter(address) external;	
 }	
  
-interface IPancakeswapV2Pair {	
+interface IuniswapV2Pair {	
     event Approval(address indexed owner, address indexed spender, uint value);	
     event Transfer(address indexed from, address indexed to, uint value);	
     function name() external pure returns (string memory);	
@@ -480,7 +470,7 @@ interface IPancakeswapV2Pair {
     function initialize(address, address) external;	
 }	
  
-interface IPancakeswapV2Router01 {	
+interface IuniswapV2Router01 {	
     function factory() external pure returns (address);	
     function WETH() external pure returns (address);	
     function addLiquidity(	
@@ -572,7 +562,7 @@ interface IPancakeswapV2Router01 {
     function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);	
 }	
  
-interface IPancakeswapV2Router02 is IPancakeswapV2Router01 {	
+interface IuniswapV2Router02 is IuniswapV2Router01 {	
     function removeLiquidityETHSupportingFeeOnTransferTokens(	
         address token,	
         uint liquidity,	
@@ -631,12 +621,12 @@ contract Nozomics is Context, IERC20, Ownable {
     address[] private _excluded;	
    	
     uint256 private constant MAX = ~uint256(0);	
-    uint256 private constant _tTotal = 1000000000000 * 10**6;	
+    uint256 private constant _tTotal = 300000000 * 10**6 * 10**8;	
     uint256 private _rTotal = (MAX - (MAX % _tTotal));	
     uint256 private _tFeeTotal;	
     string private constant _name = "CrusoeFinance";	
     string private constant _symbol = "ZOMI";	
-    uint8 private constant _decimals = 6;	
+    uint8 private constant _decimals = 8;	
     	
     uint256 public _fundFee = 0;	
     uint256 private _previousFundFee = _fundFee;	
@@ -654,11 +644,10 @@ contract Nozomics is Context, IERC20, Ownable {
     uint256 private _previousburnFee = _shareFee;
     
     //Pancake Stuff
-    IPancakeswapV2Router02 public immutable pancakeswapV2Router;	   
-    address public immutable pancakeswapV2Pair;	
-    address public pancakeswapRouterAddress = 0x10ED43C718714eb63d5aA57B78B54704E256024E;   // it's pointing to Mainnet
-    	//Mainnet: 0x10ED43C718714eb63d5aA57B78B54704E256024E
-    	//Testnet 0xD99D1c33F9fC3444f8101754aBC46c52416550D1
+    IuniswapV2Router02 public immutable uniswapV2Router;	   
+    address public immutable uniswapV2Pair;	
+    address public uniswapRouterAddress = 0x844f40AC2ba14A0F8E200184139EeBc54A495D36;   // it's pointing to Mainnet on xDai
+    	//Mainnet: 0x844f40AC2ba14A0F8E200184139EeBc54A495D36
     
     //Liquify Stuff
     bool inSwapAndLiquify;	
@@ -667,7 +656,7 @@ contract Nozomics is Context, IERC20, Ownable {
 
 
     //Adjustable to make the Red Sea changeable, if you change this to the Total supply the LP Fee can be used as burnfee
-    uint256 private minimumTokensBeforeSwap = 1000000000 * 10**6;
+    uint256 private minimumTokensBeforeSwap = 3000000000 * 10**6;
 
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);	
     event SwapAndLiquifyEnabledUpdated(bool enabled);	
@@ -684,7 +673,7 @@ contract Nozomics is Context, IERC20, Ownable {
     event OwnerTaxAccountUpdated(address,address);	
     event ExcludedFromFundFee(address);	
     event IncludedInFundFee(address);
-    event newPancakeswapRouterAddress(address);
+    event newuniswapRouterAddress(address);
     	
     modifier lockTheSwap {	
         inSwapAndLiquify = true;	
@@ -700,11 +689,11 @@ contract Nozomics is Context, IERC20, Ownable {
     constructor() public {	
         _rOwned[_msgSender()] = _rTotal;	
 		manager = msg.sender;
-        IPancakeswapV2Router02 _pancakeswapV2Router = IPancakeswapV2Router02(pancakeswapRouterAddress);	
-         // Create a pancakeswap pair for this new token	
-        pancakeswapV2Pair = IPancakeswapV2Factory(_pancakeswapV2Router.factory())	
-            .createPair(address(this), _pancakeswapV2Router.WETH());		
-        pancakeswapV2Router = _pancakeswapV2Router;	
+        IuniswapV2Router02 _uniswapV2Router = IuniswapV2Router02(uniswapRouterAddress);	
+         // Create a uniswap pair for this new token	
+        uniswapV2Pair = IuniswapV2Factory(_uniswapV2Router.factory())	
+            .createPair(address(this), _uniswapV2Router.WETH());		
+        uniswapV2Router = _uniswapV2Router;	
         	
         //exclude owner and this contract from LP and TaxFee	
         _isExcludedFromFee[owner()] = true;	
@@ -913,18 +902,18 @@ contract Nozomics is Context, IERC20, Ownable {
         emit executeAddLPUpdate(_enabled);	
     }
     
-    //Make the Router changeable incase Pancake has fun of doing another bad update^^
-    function setPancakeSwapRouterAddress(address _newRouterAddress) external onlyOwner {    
-        pancakeswapRouterAddress = _newRouterAddress; 
-        emit newPancakeswapRouterAddress(_newRouterAddress);  
+    //Make the Router changeable incase the dex has fun of doing bad updates^^
+    function setuniSwapRouterAddress(address _newRouterAddress) external onlyOwner {    
+        uniswapRouterAddress = _newRouterAddress; 
+        emit newuniswapRouterAddress(_newRouterAddress);  
     }
     	
-     //to receive ETH from pancakeswapV2Router when swapping	
+     //to receive ETH from uniswapV2Router when swapping	
     receive() external payable {}	
     	
     	
-    //Withdrawing stuck BNBs from the contract in case people send BNBs there^^
-	function withdrawStuckBNBs() public restricted {	
+    //Withdrawing stuck xDais from the contract in case people send xDais there^^
+	function withdrawStuckxDais() public restricted {	
         msg.sender.transfer(address(this).balance);	
      }	
      
@@ -1026,7 +1015,7 @@ contract Nozomics is Context, IERC20, Ownable {
         // is the token balance of this contract address over the min number of	
         // tokens that we need to initiate a swap + liquidity lock?	
         // also, don't get caught in a circular liquidity event.	
-        // also, don't swap & liquify if sender is pancakeswap pair.	
+        // also, don't swap & liquify if sender is uniswap pair.	
         uint256 contractTokenBalance = balanceOf(address(this));	
         	
         	
@@ -1034,7 +1023,7 @@ contract Nozomics is Context, IERC20, Ownable {
         if (	
             overMinTokenBalance &&	
             !inSwapAndLiquify &&	
-            from != pancakeswapV2Pair &&	
+            from != uniswapV2Pair &&	
             swapAndLiquifyEnabled	
         ) {	
             contractTokenBalance = minimumTokensBeforeSwap;	
@@ -1088,7 +1077,7 @@ contract Nozomics is Context, IERC20, Ownable {
 		swapTokensForEth(half); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
         // how much ETH did we just swap into?	
         uint256 newBalance = address(this).balance.sub(initialBalance);	
-        // add liquidity to pancakeswap	
+        // add liquidity to uniswap	
         addLiquidity(otherHalf, newBalance);	
         	
         emit SwapAndLiquify(half, newBalance, otherHalf);	
@@ -1099,13 +1088,13 @@ contract Nozomics is Context, IERC20, Ownable {
 	
     }	
     function swapTokensForEth(uint256 tokenAmount) private {	
-        // generate the pancakeswap pair path of token -> weth	
+        // generate the uniswap pair path of token -> weth	
         address[] memory path = new address[](2);	
         path[0] = address(this);	
-        path[1] = pancakeswapV2Router.WETH();	
-        _approve(address(this), address(pancakeswapV2Router), tokenAmount);	
+        path[1] = uniswapV2Router.WETH();	
+        _approve(address(this), address(uniswapV2Router), tokenAmount);	
         // make the swap	
-        pancakeswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(	
+        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(	
             tokenAmount,	
             0, // accept any amount of ETH	
             path,	
@@ -1115,9 +1104,9 @@ contract Nozomics is Context, IERC20, Ownable {
     }	
     function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {	
         // approve token transfer to cover all possible scenarios	
-        _approve(address(this), address(pancakeswapV2Router), tokenAmount);	
+        _approve(address(this), address(uniswapV2Router), tokenAmount);	
         // add the liquidity	
-        pancakeswapV2Router.addLiquidityETH{value: ethAmount}(	
+        uniswapV2Router.addLiquidityETH{value: ethAmount}(	
             address(this),	
             tokenAmount,	
             0, // slippage is unavoidable	
