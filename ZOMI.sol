@@ -1,3 +1,7 @@
+/**
+ *Submitted for verification at BscScan.com on 2021-11-15
+*/
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 /**
@@ -705,6 +709,7 @@ contract ZOMI is Context, Ownable, ERC20 {
     
     uint256 public reflectPoolFee = 0;
     uint256 public burnFee = 0;
+    uint256 public liqFee = 0;
 
     mapping(address => bool) public isTaxless;
     
@@ -727,7 +732,7 @@ contract ZOMI is Context, Ownable, ERC20 {
     constructor() ERC20("ZOMI","ZOMI") {
         
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x1C232F01118CB8B424793ae03F870aa7D0ac7f77 );
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
         uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
 
@@ -837,6 +842,7 @@ contract ZOMI is Context, Ownable, ERC20 {
              
             uint256 _taxfee = ((amount * reflectPoolFee) / 100);
             uint256 _burnFee = ((amount * burnFee) / 100);
+            uint256 _liqFee = ((amount * liqFee) / 100);
             
             //This can scale up on a lot of gasfee if there are many pools, keep it lower than 10 active pools.
             uint256 activePoolSize = getallActivePools().length;
@@ -846,10 +852,12 @@ contract ZOMI is Context, Ownable, ERC20 {
             }
             
             super._transfer(sender,deadAddress,_burnFee);
+            super._transfer(sender,address(this),_liqFee);
             
-            transferAmount = amount - (_taxfee + _burnFee);
+            transferAmount = amount - (_taxfee + _burnFee + liqFee);
         
             super._transfer(sender, recipient, transferAmount);
+            
        
     }
     
@@ -907,6 +915,11 @@ contract ZOMI is Context, Ownable, ERC20 {
     function setBurnFee(uint256 _burnFee) external onlyOwner {
         require(_burnFee > 0 && _burnFee <= 20, "Burn Fee out of range!");
         burnFee = _burnFee;
+    }
+    
+    function setLiqFee(uint256 _liqFee) external onlyOwner {
+        require(_liqFee > 0 && _liqFee <= 20, "LIQ Fee out of range!");
+        liqFee = _liqFee;
     }
 
     
